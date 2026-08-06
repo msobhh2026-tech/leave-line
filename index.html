@@ -713,14 +713,25 @@
   }
 
   /* ── Profile edit sheet ── */
+  /* Google Drive's /thumbnail?id= endpoint is often blocked/unreliable inside LINE's in-app browser (silent broken image) —
+     fall back to the lh3.googleusercontent.com mirror, which embeds much more reliably in webviews. */
+  function avatarImgHtml(fileId, size){
+    if(!fileId) return '';
+    size = size || 200;
+    var primary = 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w' + size;
+    var fallback = 'https://lh3.googleusercontent.com/d/' + fileId + '=w' + size;
+    return '<img src="' + primary + '" style="width:84px;height:84px;border-radius:50%;object-fit:cover" '
+      + 'onerror="this.onerror=null;this.src=\'' + fallback + '\';">';
+  }
+
   function openProfileSheet(){
     $('#sheetBody').html('<div class="text-center py-5"><div class="spinner-border" style="width:28px;height:28px;border-width:3px"></div>\x3c/div>');
     $('#detailSheet').addClass('show');
     api('liffGetMyProfile', LF.userId).then(function(r){
       if(r.status !== 'success'){ $('#sheetBody').html('<div class="text-center text-muted py-4">' + esc(r.message||'ไม่พบข้อมูล') + '\x3c/div>'); return; }
       var p = r.data;
-      var photoHtml = p.photo_url
-        ? '<img src="' + p.photo_url + '" style="width:84px;height:84px;border-radius:50%;object-fit:cover">'
+      var photoHtml = p.photo_file_id
+        ? avatarImgHtml(p.photo_file_id)
         : '<div style="width:84px;height:84px;border-radius:50%;background:var(--bg);display:grid;place-items:center;color:var(--muted)"><i class="fi fi-rr-user" style="font-size:30px"></i>\x3c/div>';
       var html = '<h6 class="mb-3">แก้ไขโปรไฟล์</h6>'
         + '<div class="text-center mb-3">'
@@ -750,7 +761,7 @@
       api('liffUploadAttachment', LF.userId, base64, file.name, file.type).then(function(r){
         if(r.status === 'success'){
           $('#profPhotoId').val(r.file_id);
-          $('#profPhotoPreview').html('<img src="https://drive.google.com/thumbnail?id=' + r.file_id + '&sz=w200" style="width:84px;height:84px;border-radius:50%;object-fit:cover">');
+          $('#profPhotoPreview').html(avatarImgHtml(r.file_id));
         } else {
           toast('error', r.message || 'อัพโหลดไม่สำเร็จ');
         }
