@@ -282,7 +282,15 @@
     return fetch(GAS_URL, {
       method: 'POST',
       body: JSON.stringify({ fn: fn, args: args })
-    }).then(function(r){ return r.json(); }).then(function(j){
+    }).then(function(r){
+      return r.text().then(function(txt){
+        try { return JSON.parse(txt); }
+        catch(e){
+          // เซิร์ฟเวอร์ไม่ได้ตอบกลับเป็น JSON (เช่น หน้า login ของ Google เมื่อ deploy ยังไม่เปิดให้ "Anyone" เข้าถึง)
+          throw new Error('เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง (HTTP ' + r.status + '): ' + txt.slice(0, 200));
+        }
+      });
+    }).then(function(j){
       if(j && j.ok) return j.data;
       throw new Error(j && j.error ? j.error : 'API error');
     });
